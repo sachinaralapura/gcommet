@@ -1,6 +1,6 @@
 import { buildPrompt } from '../promptBuilder';
-import { getActiveTextEditor } from '../utils';
-import { listModels } from '../ollama';
+import { addCommentToFile, ErrorType, getActiveTextEditor, getCurrentLine } from '../utils';
+import { generatedComment, listModels } from '../ollama';
 import { Ollama } from 'ollama';
 import * as vscode from "vscode";
 import fetch from "cross-fetch";
@@ -11,42 +11,55 @@ function GetOllamaUrl(): string {
     return url;
 }
 
-async function GetOllamaModel(ollama: Ollama) {
+async function GetOllamaModel(ollama: Ollama): Promise<string> {
     const models = await listModels(ollama);
     const config = vscode.workspace.getConfiguration('ollama');
-    let model = config.get<string>("modelName");
-    if (model === "") {
+    let model: string | undefined = config.get<string>("modelName");
+    if (model === "" || model === undefined) {
         if (models.length === 0) {
             throw new Error("No model found");
         }
-
-        let selectedModel = await vscode.window.showQuickPick(models, {
+        let selectedModel: string | undefined = await vscode.window.showQuickPick(models, {
             title: 'Select an Ollama Model',
             placeHolder: 'Choose a model to use',
             canPickMany: false,
             ignoreFocusOut: true,
         });
-        console.log(selectedModel);
+        if (selectedModel === undefined || selectedModel === "") {
+            throw new Error("select a model");
+        }
         return selectedModel;
     }
     return model;
-
 }
 
-export async function GenerateComment() {
+export async function GenerateCommentCommand() {
     try {
-        const editor: vscode.TextEditor | undefined = getActiveTextEditor();
-        const prompt: string | undefined = await buildPrompt(editor);
+
+        const editor: vscode.TextEditor = getActiveTextEditor();
+
         const ollama: Ollama = new Ollama({ host: GetOllamaUrl(), fetch: fetch });
 
-        GetOllamaModel(ollama);
+        const model: string = await GetOllamaModel(ollama);
+        const prompt: string | undefined = await buildPrompt(editor);
 
-        vscode.window.showInformationMessage("Hello world");
+        const comment: string = await generatedComment(ollama, model, prompt);
+        const fileURI = editor.document.uri;
+        const fileName = editor.document.fileName;
+        const currentLine = getCurrentLine(editor);
+
+        addCommentToFile(fileURI, fileName, currentLine, comment);
+
     } catch (error: any) {
-        if (error.name = "FetchError") {
+        if (error?.name === "FetchError") {
             vscode.window.showErrorMessage(`Fetch Error`);
+        } else if (error?.type === ErrorType.ERROR) {
+            vscode.window.showErrorMessage(error?.message);
+        }
+        else if (error?.type === ErrorType.WARNING) {
+            vscode.window.showWarningMessage(error?.message);
         } else {
-            vscode.window.showErrorMessage(error.message);
+            vscode.window.showInformationMessage(error?.message);
         }
         console.log(error);
     }

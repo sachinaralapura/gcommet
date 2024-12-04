@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { ErrorType, MyError } from "./utils";
 
 function getScriptContent(editor: vscode.TextEditor): string {
     let document: vscode.TextDocument = editor.document;
@@ -13,28 +14,30 @@ async function getCopiedCodeBlock(): Promise<string> {
     return codeBlock;
 }
 
-function getSelectedCodeBlock(editor: vscode.TextEditor) {
-    const codeBlock = editor.selection;
+function getSelectedCodeBlock(editor: vscode.TextEditor): string {
+    let selection: vscode.Selection = editor.selection;
+    const codeBlock: string = editor.document.getText(selection);
+    return codeBlock;
 }
 
 export async function buildPrompt(editor: vscode.TextEditor) {
 
     const scriptContent = getScriptContent(editor);
-    const codeBlock = await getCopiedCodeBlock();
-
-    if (codeBlock === "") { throw new Error("Clipboard empty"); }
-    if (scriptContent === "") { throw new Error("no context (file is empty)"); }
+    let codeBlock = getSelectedCodeBlock(editor);
+    if (codeBlock === "" || codeBlock === undefined) {
+        codeBlock = await getCopiedCodeBlock();
+        if (codeBlock === "") {
+            throw new MyError("please select or copy code", ErrorType.INFO);
+        }
+    }
+    if (scriptContent === "") { throw new MyError("no context (file is empty)", ErrorType.WARNING); }
 
     let prompt = getPrompt(scriptContent, codeBlock);
-    if (prompt === undefined) { throw Error("Failed to generate prompt"); }
+    if (prompt === undefined) { throw new MyError("Failed to generate prompt", ErrorType.ERROR); }
 
     return prompt;
 }
 
-// async function getSymbols(editor: vscode.TextEditor) {
-//     const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', editor.document.uri);
-//     console.log(symbols);
-// }
 
 
 function getPrompt(context: string, codeBlock: string = "") {
