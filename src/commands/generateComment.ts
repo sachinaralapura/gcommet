@@ -1,15 +1,10 @@
-import { buildPrompt } from '../promptBuilder';
-import { addCommentToFile, ErrorType, getActiveTextEditor, getCurrentLine } from '../utils';
+import { getPrompt } from '../promptBuilder';
+import { addCommentToFile, ErrorType, getActiveTextEditor, getConfiguration, handleError } from '../utils';
 import { generatedComment, listModels } from '../ollama';
 import { Ollama } from 'ollama';
 import * as vscode from "vscode";
 import fetch from "cross-fetch";
 
-function GetOllamaUrl(): string {
-    const config = vscode.workspace.getConfiguration('ollama');
-    const url = config.get<string>('serverURL', 'http://127.0.0.1:11434');
-    return url;
-}
 
 async function GetOllamaModel(ollama: Ollama): Promise<string> {
     const models = await listModels(ollama);
@@ -38,29 +33,19 @@ export async function GenerateCommentCommand() {
 
         const editor: vscode.TextEditor = getActiveTextEditor();
 
-        const ollama: Ollama = new Ollama({ host: GetOllamaUrl(), fetch: fetch });
+        const ollama: Ollama = new Ollama({ host: getConfiguration<string>('serverURL', 'http://127.0.0.1:11434'), fetch: fetch });
 
         const model: string = await GetOllamaModel(ollama);
-        const prompt: string | undefined = await buildPrompt(editor);
-
+        const { prompt, line } = await getPrompt(editor);
+        console.log(prompt);
         const comment: string = await generatedComment(ollama, model, prompt);
         const fileURI = editor.document.uri;
         const fileName = editor.document.fileName;
-        const currentLine = getCurrentLine(editor);
 
-        addCommentToFile(fileURI, fileName, currentLine, comment);
-
+        addCommentToFile(fileURI, fileName, line, comment);
+        ollama.abort();
     } catch (error: any) {
-        if (error?.name === "FetchError") {
-            vscode.window.showErrorMessage(`Fetch Error`);
-        } else if (error?.type === ErrorType.ERROR) {
-            vscode.window.showErrorMessage(error?.message);
-        }
-        else if (error?.type === ErrorType.WARNING) {
-            vscode.window.showWarningMessage(error?.message);
-        } else {
-            vscode.window.showInformationMessage(error?.message);
-        }
+        handleError(error);
         console.log(error);
     }
 }

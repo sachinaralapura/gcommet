@@ -15,15 +15,24 @@
     "configuration": {
       "title": "Ollama Settings",
       "properties": {
+        
         "ollama.serverURL": {
           "type": "string",
           "default": "http://127.0.0.1:11434",
           "description": "The URL of the Ollama server."
         },
+
+        "ollama.giveContext": {
+          "type": "boolean",
+          "description": "Add the context to the Prompt",
+          "default": true
+        },
+
         "ollama.modelName": {
           "type": "string",
           "description": "The name of the model to use."
         }
+
       }
     },
     "commands": [
