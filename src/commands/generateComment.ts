@@ -1,13 +1,11 @@
-import { getPrompt } from '../promptBuilder';
-import { addCommentToFile, ErrorType, getActiveTextEditor, getConfiguration, handleError } from '../utils';
-import { generatedComment, listModels } from '../ollama';
-import { Ollama } from 'ollama';
+import { Prompt, PromptBuilder } from '../promptBuilder';
+import { getConfiguration, handleError } from '../utils/utils';
+import { OllamaServer } from '../ollama';
 import * as vscode from "vscode";
-import fetch from "cross-fetch";
+import { ActiveEditor, getActiveTextEditor } from '../editor';
 
 
-async function GetOllamaModel(ollama: Ollama): Promise<string> {
-    const models = await listModels(ollama);
+async function GetOllamaModelFromUser(models: string[]): Promise<string> {
     const config = vscode.workspace.getConfiguration('ollama');
     let model: string | undefined = config.get<string>("modelName");
     if (model === "" || model === undefined) {
@@ -31,19 +29,28 @@ async function GetOllamaModel(ollama: Ollama): Promise<string> {
 export async function GenerateCommentCommand() {
     try {
 
-        const editor: vscode.TextEditor = getActiveTextEditor();
+        const editor: ActiveEditor = ActiveEditor.getInstance();
 
-        const ollama: Ollama = new Ollama({ host: getConfiguration<string>('serverURL', 'http://127.0.0.1:11434'), fetch: fetch });
+        // connect to ollama server
+        const serverUrl: string = getConfiguration<string>('serverURL', 'http://127.0.0.1:11434');
+        const ollamaServer: OllamaServer = OllamaServer.getInstance(serverUrl);
+        const models: string[] = await ollamaServer.listModels();
+        const model: string = await GetOllamaModelFromUser(models);
 
-        const model: string = await GetOllamaModel(ollama);
-        const { prompt, line } = await getPrompt(editor);
-        console.log(prompt);
-        const comment: string = await generatedComment(ollama, model, prompt);
-        const fileURI = editor.document.uri;
-        const fileName = editor.document.fileName;
+        // build the prompt
+        const promptbuilder: PromptBuilder = new PromptBuilder(editor);
+        let prompt: Prompt = getConfiguration<boolean>("giveContext") ? promptbuilder.buildContext().buildPromptText().buildCodeBlock().build() : promptbuilder.buildPromptText().buildCodeBlock().build();
+        const fullPrompt: string = prompt.getFullPrompt();
+        console.log(fullPrompt);
 
-        addCommentToFile(fileURI, fileName, line, comment);
-        ollama.abort();
+        // generate comment
+        const comment: string = await ollamaServer.generateComment(model, fullPrompt);
+
+        // write comment to textEditor
+        // comment will be added to the line above selection
+        await editor.addCommentToFile(comment);
+
+        ollamaServer.abort();
     } catch (error: any) {
         handleError(error);
         console.log(error);

@@ -1,26 +1,47 @@
 import { GenerateResponse, ListResponse, Ollama } from "ollama";
+import { getConfiguration } from "./utils/utils";
+import fetch from "cross-fetch";
 
+// singleton
+export class OllamaServer {
 
+    private ollama: Ollama;
+    private static server: OllamaServer;
 
-export async function listModels(ollamaInstance: Ollama) {
-    let list: ListResponse = await ollamaInstance.list();
-
-    let models: string[] = [];
-    for (const model of list.models) {
-        models.push(model.name);
+    private constructor(url: string) {
+        this.ollama = new Ollama({ host: url, fetch: fetch });
     }
-    return models;
-}
 
-export async function generatedComment(ollama: Ollama, model: string, prompt: string): Promise<string> {
-    const t0 = performance.now();
-    const response: GenerateResponse = await ollama.generate({
-        model: model,
-        prompt: prompt,
-    });
+    public static getInstance(hostUrl: string): OllamaServer {
+        if (!OllamaServer.server) {
+            OllamaServer.server = new OllamaServer(hostUrl);
+        }
+        return OllamaServer.server;
+    }
 
-    const t1 = performance.now();
-    console.log('LLM took: ', t1 - t0, ', seconds');
+    public async listModels(): Promise<string[]> {
+        let list: ListResponse = await this.ollama.list();
+        let models: string[] = [];
+        for (const model of list.models) {
+            models.push(model.name);
+        }
+        return models;
+    }
 
-    return response.response;
+    public async generateComment(model: string, prompt: string): Promise<string> {
+        const t0 = performance.now();
+        const response: GenerateResponse = await this.ollama.generate({
+            model: model,
+            prompt: prompt,
+        });
+
+        const t1 = performance.now();
+        console.log('LLM took: ', t1 - t0, ', seconds');
+
+        return response.response;
+    }
+
+    public abort(){
+        this.ollama.abort();
+    }
 }
