@@ -1,72 +1,53 @@
-# gcomment README
+# Gcomments: AI-Powered Code Comment Generation for VS Code
 
-This is the README for your extension "gcomment". 
-generate comments for code
+This VS Code extension leverages Ollama AI models to effortlessly generate comprehensive comments for your code, enhancing maintainability and readability.
 
-## Features
+### Features:
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+- Seamless Integration: Generate comments directly within your VS Code environment, streamlining your workflow.
+- AI-Driven Insights: Utilize Ollama AI models to create insightful and accurate comments that capture the essence of your code.
+- Improved Code Clarity: Communicate code purpose and functionality effectively with well-structured comments.
+- Safety : Since Ollama models are ran locally, it's safe to trust.
 
-For example if there is an image subfolder under your extension project workspace:
+### Requirement:
+ 
+**Download Ollama CLI from**  [**Ollama**](https://ollama.com/download)
 
-\!\[feature X\]\(images/feature-x.png\)
+**Pull a model**
+```bash 
+ollama pull 'modle_name'
+```
+---
+### Configuartion
+Go to settings and search setting or edit JSON file
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+**Json**
+```json
+"ollama.giveContext": true,
+"ollama.modelName": "give model name",
+"ollama.prompt": "give you own prompt",
+"ollama.serverURL": "http://127.0.0.1:11434",
+```
+**Settings**
 
-## Requirements
+Head to setting and search **Ollama** 
 
-Install Ollama and models
+- **server Url** : Default localhost portnumber 114343 is considered, if needed can be changed here.
 
-## Extension Settings
+- **GiveContext** : If set to true take whole file content into consideration
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+- **Model Name** : If no model name is Given, prompt to select a model from all install models.
 
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
-
-## Release Notes
-
-Users appreciate release notes as you update your extension.
-
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+- **Prompt** : A Default prompt is used, if necessary you can give your own. {language} is replaced with the language of the current document 
 
 ---
 
-## Following extension guidelines
+### Commads
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+- Select the code that you want to be commented. 
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+- Go to **command** ( ``` ctrl + P ``` ) and select Generate comments.
 
-## Working with Markdown
+- Select the **model**, if asked.
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+- Comments will be generated a line above the selected code.

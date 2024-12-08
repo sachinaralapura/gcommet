@@ -9,6 +9,8 @@
   "categories": [
     "Other"
   ],
+  "repository": {"url": "https://github.com/sachinaralapura/gcommet.git"},
+  "publisher": "codeBat",
   "activationEvents": [
     "onCommand:gcomment"
   ],

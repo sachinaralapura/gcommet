@@ -1,5 +1,4 @@
 import { GenerateResponse, ListResponse, Ollama } from "ollama";
-import { getConfiguration } from "./utils/utils";
 import fetch from "cross-fetch";
 
 // singleton
@@ -41,7 +40,7 @@ export class OllamaServer {
         return response.response;
     }
 
-    public abort(){
+    public abort() {
         this.ollama.abort();
     }
 }
