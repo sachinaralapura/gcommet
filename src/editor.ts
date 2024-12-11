@@ -1,17 +1,6 @@
 import * as vscode from "vscode";
 import { ErrorType, MyError } from "./utils/type";
 
-
-export function getActiveTextEditor(): vscode.TextEditor {
-    const editor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
-    if (editor === undefined) {
-        throw new MyError("Failed to retrieve editor", ErrorType.ERROR);
-    }
-    return editor;
-}
-
-
-
 export interface Editor {
     editor: vscode.TextEditor,
     document: vscode.TextDocument
@@ -23,13 +12,11 @@ export interface Editor {
 export class ActiveEditor implements Editor {
     editor: vscode.TextEditor;
     document: vscode.TextDocument;
-
-    private static self: ActiveEditor;
-
-    private constructor() {
+    constructor() {
         this.editor = this.getActiveEditor();
         this.document = this.editor.document;
     }
+
 
     private getActiveEditor(): vscode.TextEditor {
         const editor: vscode.TextEditor | undefined = vscode.window.activeTextEditor;
@@ -39,14 +26,7 @@ export class ActiveEditor implements Editor {
         return editor;
     }
 
-    public static getInstance(): ActiveEditor {
-        if (!ActiveEditor.self) {
-            ActiveEditor.self = new ActiveEditor();
-        }
-        return this.self;
-    }
-
-    getLanguage(): string {
+    public getLanguage(): string {
         return this.editor.document.languageId;
     }
 
@@ -62,10 +42,7 @@ export class ActiveEditor implements Editor {
         return codeBlock;
     }
 
-
-    async getLineNumber(): Promise<number> {
-
-        const selection = this.editor.selection;
+    async getLineNumber(selection: vscode.Range): Promise<number> {
         const startLine = selection.start.line;
         let lineAbove = selection.start.line - 1;
 
@@ -85,11 +62,49 @@ export class ActiveEditor implements Editor {
         return lineAbove;
     }
 
-    public async addCommentToFile(generatedComment: string,) {
+    private async getAllSymbols(): Promise<vscode.DocumentSymbol[]> {
+        const allsymbols: vscode.DocumentSymbol[] = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>('vscode.executeDocumentSymbolProvider', this.document.uri);
+        if (allsymbols.length === 0) {
+            throw new MyError("No Symbol found", ErrorType.INFO);
+        }
+        return allsymbols;
+    }
+
+    public async getAllFunctionName(): Promise<string[]> {
+        let allFunctions = new Array();
+        let allSymbols: vscode.DocumentSymbol[] = await this.getAllSymbols();
+        for (let symbol of allSymbols) {
+            if (symbol.kind === vscode.SymbolKind.Function) {
+                allFunctions.push(symbol.name);
+            }
+        }
+        return allFunctions;
+    }
+
+
+
+    public async getFunction(func: string): Promise<vscode.DocumentSymbol> {
+        let allSymbols: vscode.DocumentSymbol[] = await this.getAllSymbols();
+        for (let symbol of allSymbols) {
+            if (symbol.kind === vscode.SymbolKind.Function && symbol.name === func) {
+                return symbol;
+            }
+        }
+        throw new MyError("Function not found ", ErrorType.ERROR);
+    }
+
+
+    public async getSelectedFunction(func: string): Promise<string> {
+        let symbol: vscode.DocumentSymbol = await this.getFunction(func);
+        let functionString: string = this.editor.document.getText(symbol.range);
+        return functionString;
+    }
+
+    public async addCommentToFile(generatedComment: string, selection: vscode.Range) {
         const fileURI = this.document.uri;
         const fileName = this.document.fileName;
-        const lineNumber: number = await this.getLineNumber();
         const edit = new vscode.WorkspaceEdit();
+        const lineNumber = await this.getLineNumber(selection);
         edit.insert(fileURI, new vscode.Position(lineNumber, 0), generatedComment.trim());
         await vscode.workspace.applyEdit(edit);
         vscode.window.showInformationMessage(`Commented added to ${fileName} at line ${lineNumber + 1}`);

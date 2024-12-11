@@ -1,4 +1,3 @@
-import * as vscode from "vscode";
 import { ErrorType, getConfiguration, MyError } from "./utils/utils";
 import { Editor } from "./editor";
 // export class promptBuilder {
@@ -105,7 +104,8 @@ export class Prompt {
 interface PromptBuilderInterface {
     buildContext(): PromptBuilderInterface
     buildPromptText(): PromptBuilderInterface
-    buildCodeBlock(): PromptBuilderInterface
+    buildCodeBlock(codeBlock: string): PromptBuilderInterface
+    buildFunctionPrompt(): PromptBuilderInterface
     build(): Prompt
 }
 
@@ -118,12 +118,21 @@ export class PromptBuilder implements PromptBuilderInterface {
         this.editor = editor;
         this.prompt = new Prompt();
     }
+    buildFunctionPrompt(): PromptBuilderInterface {
+        let language: string = this.editor.getLanguage();
+        let prompt: string = getConfiguration<string>("prompt").replace("{language}", language).replace("{codeblock}", "function");
+        prompt = `\n${prompt}\n`;
+        this.prompt.setPromptText(prompt);
+        return this;
+    }
 
     buildContext(): PromptBuilderInterface {
-        let context: string = this.editor.getEditorContent();
-        context = `code context : 
-                        \`${context}\`\n`;
-        this.prompt.setContext(context);
+        if (getConfiguration<boolean>("giveContext")) {
+            let context: string = this.editor.getEditorContent();
+            context = `code context : 
+            \`${context}\`\n`;
+            this.prompt.setContext(context);
+        }
         return this;
     }
 
@@ -135,8 +144,8 @@ export class PromptBuilder implements PromptBuilderInterface {
         return this;
     }
 
-    buildCodeBlock(): PromptBuilderInterface {
-        let codeBlock = this.editor.getSelection();
+    buildCodeBlock(codeBlock: string): PromptBuilderInterface {
+
         if (codeBlock === "" || codeBlock === undefined) {
             throw new MyError("please select code", ErrorType.INFO);
         }

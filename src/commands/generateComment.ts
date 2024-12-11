@@ -1,35 +1,15 @@
 import { Prompt, PromptBuilder } from '../promptBuilder';
-import { getConfiguration, handleError } from '../utils/utils';
+import { getConfiguration, GetOllamaModelFromUser, handleError } from '../utils/utils';
 import { OllamaServer } from '../ollama';
-import * as vscode from "vscode";
-import { ActiveEditor, getActiveTextEditor } from '../editor';
+import { ActiveEditor } from '../editor';
 
 
-async function GetOllamaModelFromUser(models: string[]): Promise<string> {
-    const config = vscode.workspace.getConfiguration('ollama');
-    let model: string | undefined = config.get<string>("modelName");
-    if (model === "" || model === undefined) {
-        if (models.length === 0) {
-            throw new Error("No model found");
-        }
-        let selectedModel: string | undefined = await vscode.window.showQuickPick(models, {
-            title: 'Select an Ollama Model',
-            placeHolder: 'Choose a model to use',
-            canPickMany: false,
-            ignoreFocusOut: true,
-        });
-        if (selectedModel === undefined || selectedModel === "") {
-            throw new Error("select a model");
-        }
-        return selectedModel;
-    }
-    return model;
-}
+
 
 export async function GenerateCommentCommand() {
-    try {
 
-        const editor: ActiveEditor = ActiveEditor.getInstance();
+    try {
+        const editor: ActiveEditor = new ActiveEditor();
 
         // connect to ollama server
         const serverUrl: string = getConfiguration<string>('serverURL', 'http://127.0.0.1:11434');
@@ -39,7 +19,7 @@ export async function GenerateCommentCommand() {
 
         // build the prompt
         const promptbuilder: PromptBuilder = new PromptBuilder(editor);
-        let prompt: Prompt = getConfiguration<boolean>("giveContext") ? promptbuilder.buildContext().buildPromptText().buildCodeBlock().build() : promptbuilder.buildPromptText().buildCodeBlock().build();
+        let prompt: Prompt = promptbuilder.buildContext().buildPromptText().buildCodeBlock(editor.getSelection()).build();
         const fullPrompt: string = prompt.getFullPrompt();
         console.log(fullPrompt);
 
@@ -48,7 +28,7 @@ export async function GenerateCommentCommand() {
 
         // write comment to textEditor
         // comment will be added to the line above selection
-        await editor.addCommentToFile(comment);
+        await editor.addCommentToFile(comment, editor.editor.selection);
 
         ollamaServer.abort();
     } catch (error: any) {
